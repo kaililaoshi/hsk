@@ -96,6 +96,7 @@ u.tw{text-decoration-color:var(--red);text-decoration-thickness:3px;text-underli
 .rvh{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}.rvq{margin:6px 0;font-size:17px;line-height:1.6}.rvp{border:0;background:var(--sage-soft);border-radius:999px;padding:3px 9px;margin-left:auto}
 .pad2{display:flex;gap:16px;justify-content:center;margin-top:12px}.pad2 button{width:110px;height:62px;border:0;border-radius:16px;background:var(--card);box-shadow:var(--shadow);font-size:28px;font-weight:900;touch-action:manipulation}.pad2 button:active{background:var(--sage-soft)}
 .game.mk{min-height:0}
+.block>.games{margin-top:16px}
 .charin{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:8px}.charin input{width:92px;height:72px;font-size:40px;text-align:center;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink)}
 .freenote{background:#fff3d6;color:#6b4e12;border:1.5px solid #e8c873;border-radius:12px;padding:10px 12px;text-align:left;line-height:1.45;font-size:14px;margin:6px 0}
 :root[data-theme="dark"] .freenote{background:#3d3220;color:#f0dca8;border-color:#7a6430}
@@ -11856,7 +11857,7 @@ function renderHome(){
   </section>
   <div class="games">${GAMES.map(g=>{
     const best=store.get('best:'+g.id,null);
-    const off=n<4||(g.id==='memory'&&n<6)||(g.id==='cols'&&n<6)||(g.needsAudio&&pool().filter(hasVoice).length<4)||(g.id==='wolf'&&!patterns(twoSyl()).length);
+    const off=n<4||(g.id==='memory'&&n<6)||(g.id==='cols'&&n<6)||(g.needsAudio&&pool().filter(hasVoice).length<4);
     return `<button class="game" data-g="${g.id}" ${off?'disabled':''}><div class="gico">${g.ic}</div>
     <div><b>${g.t}</b><span>${g.d}</span>${best!=null?`<em>Рекорд: ${esc(best)}</em>`:''}</div></button>`}).join('')}</div>
   ${n<4?'<p class="note">Открой уровень и выбери хотя бы один набор, чтобы начать.</p>':''}</section>
@@ -12593,13 +12594,21 @@ const TONE_MA=['ma','mā','má','mǎ','mà'];
 const toneName=t=>[...t].map(c=>c==='0'?'лёгкий':c).join(' + ');
 function twoSyl(){return pool().filter(w=>w.t&&w.t.length===2&&[...w.h].length===2)}
 function patterns(P){const m={};P.forEach(w=>{m[w.t]=(m[w.t]||0)+1});return Object.keys(m).filter(k=>m[k]>=4&&P.length-m[k]>=4)}
+function wolfPool(){
+  let P=twoSyl(); if(patterns(P).length)return {P,ext:false};
+  const lv=new Set(state.lessons.map(l=>Math.floor(l/100))), seen=new Set();
+  const two=w=>w.t&&w.t.length===2&&[...w.h].length===2;
+  P=WORDS.filter(w=>lv.has(Math.floor(w.l/100))&&two(w)&&!seen.has(w.h)&&seen.add(w.h));
+  if(patterns(P).length)return {P,ext:true};
+  seen.clear(); P=WORDS.filter(w=>two(w)&&!seen.has(w.h)&&seen.add(w.h)); return {P,ext:true};
+}
 function playWolf(){
-  const P=twoSyl(), pats=patterns(P); let pat=sample(pats,1)[0];
+  const {P,ext}=wolfPool(), pats=patterns(P); let pat=sample(pats,1)[0];
   const intro=()=>{
     app.innerHTML=topBar(gameTitle(),1)+`
     <div class="prompt"><div class="hint">Лови только слова с тонами</div>
     <div class="big"><span class="tonebig">${[...pat].map(c=>TONE_MA[+c]).join(' ')}</span><small>${toneName(pat)} тон</small></div>
-    <p class="hint" style="max-width:48ch;line-height:1.5">Сверху падают кусочки бамбука со словами. Двигай панду влево и вправо и лови в корзинку только слова с этими тонами — остальные пропускай. Упустила нужное или поймала чужое — минус жизнь. Чем больше поймала, тем быстрее падает бамбук.</p></div>
+    ${ext?'<p class="hint" style="max-width:48ch;color:var(--red)">В выбранных наборах мало двусложных слов, поэтому добавлены слова того же уровня HSK.</p>':''}<p class="hint" style="max-width:48ch;line-height:1.5">Сверху падают кусочки бамбука со словами. Двигай панду влево и вправо и лови в корзинку только слова с этими тонами — остальные пропускай. Упустила нужное или поймала чужое — минус жизнь. Чем больше поймала, тем быстрее падает бамбук.</p></div>
     <div class="row-btns"><button class="btn ghost" id="other">Другие тоны</button><button class="btn red" id="go">Начать</button></div>`;
     bindBack();
     $('#other').onclick=()=>{const o=pats.filter(p=>p!==pat);if(o.length)pat=sample(o,1)[0];intro()};
