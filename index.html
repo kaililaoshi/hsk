@@ -97,6 +97,11 @@ u.tw{text-decoration-color:var(--red);text-decoration-thickness:3px;text-underli
 .pad2{display:flex;gap:16px;justify-content:center;margin-top:12px}.pad2 button{width:110px;height:62px;border:0;border-radius:16px;background:var(--card);box-shadow:var(--shadow);font-size:28px;font-weight:900;touch-action:manipulation}.pad2 button:active{background:var(--sage-soft)}
 .game.mk{min-height:0}
 .block>.games{margin-top:16px}
+.listbanner{display:flex;gap:14px;align-items:center;width:100%;text-align:left;border:2px dashed var(--sage);background:var(--sage-soft);border-radius:16px;padding:12px 16px;margin:0 0 12px;cursor:pointer;color:var(--ink);font-size:14px;line-height:1.4}.listbanner>span:first-child{font-size:30px}.listbanner:hover{border-style:solid}
+.wl{display:grid;gap:4px}.wr{display:grid;grid-template-columns:34px minmax(90px,150px) minmax(90px,170px) 1fr;gap:10px;align-items:center;background:var(--card);border-radius:10px;padding:8px 10px;cursor:pointer;box-shadow:var(--shadow)}
+.wr:hover{outline:2px solid var(--sage-soft)}.wn{color:var(--muted);font-size:12px}.wh{font-size:24px;font-weight:800}.wp{color:var(--red);font-weight:700}.wt{font-size:14px;line-height:1.35}
+.wr .hid{color:transparent;background:var(--card-2);border-radius:6px;user-select:none}
+@media (max-width:620px){.wr{grid-template-columns:26px 1fr;}.wr .wp,.wr .wt{grid-column:2}}
 .charin{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:8px}.charin input{width:92px;height:72px;font-size:40px;text-align:center;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink)}
 .freenote{background:#fff3d6;color:#6b4e12;border:1.5px solid #e8c873;border-radius:12px;padding:10px 12px;text-align:left;line-height:1.45;font-size:14px;margin:6px 0}
 :root[data-theme="dark"] .freenote{background:#3d3220;color:#f0dca8;border-color:#7a6430}
@@ -11810,7 +11815,7 @@ function save(){store.set('lessons',state.lessons);store.set('listen',state.list
 function render(){
   clearTimers();try{apStop()}catch(e){}
   if(state.screen==='home') return renderHome();
-  const g = {cards:playCards,quiz:()=>playChoice('quiz'),rev:()=>playChoice('rev'),pinyin:()=>playChoice('pinyin'),listen:()=>playChoice('listen'),memory:playMemory,whack:playWhack,wolf:playWolf,gfill:()=>playGChoice('fill'),gzr:()=>playGChoice('zr'),gfix:playGFix,gorder:playGOrder,gmatch:playGMatch,snake:playSnake,cols:playCols,build:playBuild}[state.game]||(state.game.startsWith('pr')?()=>{const [a,t]=state.game.slice(2).split(':');playPrac(+a,t)}:state.game.startsWith('mk')?()=>{const [a,id]=state.game.slice(2).split(':');playMock(+a,id)}:null);
+  const g = {cards:playCards,quiz:()=>playChoice('quiz'),rev:()=>playChoice('rev'),pinyin:()=>playChoice('pinyin'),listen:()=>playChoice('listen'),memory:playMemory,whack:playWhack,wolf:playWolf,gfill:()=>playGChoice('fill'),gzr:()=>playGChoice('zr'),gfix:playGFix,gorder:playGOrder,gmatch:playGMatch,snake:playSnake,cols:playCols,build:playBuild,list:playList}[state.game]||(state.game.startsWith('pr')?()=>{const [a,t]=state.game.slice(2).split(':');playPrac(+a,t)}:state.game.startsWith('mk')?()=>{const [a,id]=state.game.slice(2).split(':');playMock(+a,id)}:null);
   g();
 }
 function topBar(label,back){
@@ -11851,7 +11856,8 @@ function renderHome(){
 
   <section class="block b1" id="blk1"><div class="bhead"><span class="bn">1</span><div><h2>Лексика и игры</h2><p>Открой уровень, отметь наборы слов (по 50, от частых к редким) и выбери игру.</p></div></div>
   <section class="card panel">
-    <div class="panel-head"><h2>Наборы слов</h2><div class="quick"><button class="qbtn" data-q="none">Сбросить</button></div></div>
+    <div class="panel-head"><h2>Наборы слов</h2><div class="quick"><button class="qbtn go" data-g="list">📖 Списки слов и PDF</button><button class="qbtn" data-q="none">Сбросить</button></div></div>
+    <button class="listbanner go" data-g="list"><span class="hz">📖</span><span><b>Списки слов всех HSK</b><br>Листай наборы по 50 слов, слушай, скрывай перевод для самопроверки, скачивай PDF</span></button>
     ${LEVELS.map(lvBox).join('')}
     <div class="opts-row"><div class="count"><b>${n}</b> слов · ${esc(lessonLabel())}</div></div>
   </section>
@@ -11886,10 +11892,10 @@ function renderHome(){
   app.querySelectorAll('.qbtn[data-gq]').forEach(b=>b.onclick=()=>{state.gl=[];save();renderHome()});
   app.querySelectorAll('.ls[data-l]').forEach(c=>c.onclick=()=>{const l=+c.dataset.l;state.lessons=state.lessons.includes(l)?state.lessons.filter(x=>x!==l):[...state.lessons,l].sort((a,b)=>a-b);save();renderHome()});
   app.querySelectorAll('.qbtn[data-q]').forEach(b=>b.onclick=()=>{state.lessons=[];save();renderHome()});
-  app.querySelectorAll('.game,.tbtn.go').forEach(b=>b.onclick=()=>{ctx();state.game=b.dataset.g;state.screen='play';render();window.scrollTo(0,0)});
+  app.querySelectorAll('.game,.tbtn.go,.go[data-g]').forEach(b=>b.onclick=()=>{ctx();state.game=b.dataset.g;state.screen='play';render();window.scrollTo(0,0)});
   app.querySelectorAll('.jump a').forEach(a=>a.onclick=e=>{e.preventDefault();const t=document.querySelector(a.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth'})});
 }
-function gameTitle(){const g0=state.game||'';
+function gameTitle(){const g0=state.game||'';if(g0==='list')return 'Списки слов';
   if(g0.startsWith('pr')){const [a,t]=g0.slice(2).split(':');return lvName(+a)+' · '+PT[t]}
   if(g0.startsWith('mk')){const [a,id]=g0.slice(2).split(':');const m=MOCK[+a].mocks.find(x=>x.id===id);return lvName(+a)+' · '+mockName(m)}
   const g=GGAMES.find(g=>g.id===state.game);if(g){const L=gsel();return g.t+' · '+(L.length===1?gname(L[0]):'тем: '+L.length)}return GAMES.find(g=>g.id===state.game).t}
@@ -12432,6 +12438,39 @@ function playMock(lv,id){
     };
     paint(); window.scrollTo(0,0);
   }
+}
+
+/* ---------- word lists: browse sets, hide/show, listen, PDF ---------- */
+const PDFN=lv=>'pdf/HSK'+(lv===7?'7-9':lv)+'_slova.pdf';
+const clr=r=>{r=String(r).trim();const o=(r.match(/\(/g)||[]).length,c=(r.match(/\)/g)||[]).length;if(o>c)r=r.startsWith('(')?r.slice(1):r+')';return r};
+function playList(){
+  let lv=store.get('listlv',1), st=store.get('listset',null), hideR=false, hideP=false;
+  const paint=()=>{
+    const sets=setsOf(lv); if(!sets.includes(st))st=sets[0];
+    const ws=WORDS.filter(w=>w.l===st);
+    app.innerHTML=topBar('Списки слов',1)+`
+    <div class="hud" style="flex-wrap:wrap;justify-content:flex-start;gap:6px">${LEVELS.map(([l,nm])=>`<button class="tbtn" data-lv="${l}" aria-pressed="${l===lv}">${nm}</button>`).join('')}</div>
+    <div class="card panel" style="padding:14px">
+      <div class="panel-head" style="flex-wrap:wrap;gap:8px"><h2 style="margin:0">${lvName(lv)} · набор ${st%100} <small style="color:var(--muted);font-weight:600">(${ws.length} слов)</small></h2>
+        <a class="btn ghost" href="${PDFN(lv)}" target="_blank" download style="text-decoration:none;padding:9px 16px;font-size:14px;color:var(--ink)">📄 PDF: весь ${lvName(lv)}</a></div>
+      <div class="lessons" style="grid-template-columns:repeat(auto-fill,minmax(44px,1fr));margin:10px 0">${sets.map(l=>`<button class="ls" data-s="${l}" aria-pressed="${l===st}">${l%100}</button>`).join('')}</div>
+      <div class="row-btns" style="justify-content:flex-start;gap:8px;margin:4px 0 10px">
+        <button class="tbtn" id="hr" aria-pressed="${hideR}">${hideR?"Показать":"Скрыть"} перевод</button><button class="tbtn" id="hp" aria-pressed="${hideP}">${hideP?"Показать":"Скрыть"} пиньинь</button>
+        <button class="tbtn" id="toGame">▶ Тренировать этот набор в играх</button></div>
+      <p class="hint" style="text-align:left;margin:0 0 8px">Нажми на строку — услышишь слово, а скрытые пиньинь и перевод откроются.</p>
+      <div class="wl">${ws.map((w,i)=>`<div class="wr" data-i="${i}"><span class="wn">${i+1}</span><span class="hz wh">${esc(w.h)}</span><span class="wp ${hideP?'hid':''}">${esc(w.p)}</span><span class="wt ${hideR?'hid':''}">${esc(clr(w.r))}</span></div>`).join('')}</div>
+      <div class="row-btns" style="margin-top:12px">${sets.indexOf(st)>0?'<button class="btn ghost" id="prv">← Предыдущий набор</button>':''}${sets.indexOf(st)<sets.length-1?'<button class="btn red" id="nxs">Следующий набор →</button>':''}</div>
+    </div>`;
+    bindBack(); preload(ws);
+    app.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{lv=+b.dataset.lv;st=null;store.set('listlv',lv);paint()});
+    app.querySelectorAll('.ls[data-s]').forEach(b=>b.onclick=()=>{st=+b.dataset.s;store.set('listset',st);paint()});
+    $('#hr').onclick=()=>{hideR=!hideR;paint()}; $('#hp').onclick=()=>{hideP=!hideP;paint()};
+    app.querySelectorAll('.wr').forEach(r=>r.onclick=()=>{ctx();say(ws[+r.dataset.i]);r.querySelectorAll('.hid').forEach(e=>e.classList.remove('hid'))});
+    if($('#prv'))$('#prv').onclick=()=>{st=sets[sets.indexOf(st)-1];store.set('listset',st);paint();window.scrollTo(0,0)};
+    if($('#nxs'))$('#nxs').onclick=()=>{st=sets[sets.indexOf(st)+1];store.set('listset',st);paint();window.scrollTo(0,0)};
+    $('#toGame').onclick=()=>{state.lessons=[st];state.open['v'+lv]=true;save();state.screen='home';render();later(()=>{const e=document.getElementById('blk1');if(e)e.scrollIntoView()},50)};
+  };
+  paint();
 }
 
 function playGMatch(){
