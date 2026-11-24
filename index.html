@@ -12227,23 +12227,32 @@ function playCols(){
 }
 
 /* ---------- exam audio player: play/pause, stop, speed, script ---------- */
-const AP={el:null,cur:null,paused:false,raf:0,rate:store.get('rate',1)};
+const AP={el:null,cur:null,paused:false,raf:0,rate:store.get('rate',1),blob:{},state:''};
 function apSrc(it){if(it.clip)return (typeof EXA!=='undefined'&&EXA[it.clip])?EXA[it.clip]:'exam/'+it.clip+'.mp3';
   return (typeof MKA!=='undefined'&&MKA[it.sp])?MKA[it.sp]:'mock/'+it.sp+'.mp3'}
-function apUI(){document.querySelectorAll('.aplay').forEach(b=>{const on=AP.cur&&AP.cur===b._it&&!AP.paused;b.innerHTML=on?'⏸ Пауза':(AP.cur===b._it&&AP.paused?'▶ Дальше':'▶ Слушать')})}
-function apStop(){try{if(AP.el)AP.el.pause()}catch(e){}cancelAnimationFrame(AP.raf);AP.cur=null;AP.paused=false;apUI()}
-function apPlay(it){
+function apFetch(src){if(src.startsWith('data:'))return Promise.resolve(src);
+  if(!AP.blob[src])AP.blob[src]=fetch(src).then(r=>{if(!r.ok)throw 0;return r.blob()}).then(b=>URL.createObjectURL(b)).catch(e=>{delete AP.blob[src];throw e});
+  return AP.blob[src]}
+function apPrefetch(items){const seen=new Set();items.forEach(it=>{if(!(it.au||it.clip))return;const s=apSrc(it);if(seen.has(s))return;seen.add(s);apFetch(s).catch(()=>{})})}
+function apUI(){document.querySelectorAll('.aplay').forEach(b=>{const mine=AP.cur&&AP.cur===b._it;
+  b.innerHTML=mine&&AP.state==='load'?'⏳ Загружаю аудио…':mine&&AP.state==='err'?'⚠ Не загрузилось — ещё раз':mine&&!AP.paused?'⏸ Пауза':(mine&&AP.paused?'▶ Дальше':'▶ Слушать')})}
+function apStop(){try{if(AP.el)AP.el.pause()}catch(e){}cancelAnimationFrame(AP.raf);AP.cur=null;AP.paused=false;AP.state='';apUI()}
+async function apPlay(it){
   apStop(); try{speechSynthesis.cancel()}catch(e){}
   if(!AP.el)AP.el=new Audio();
   const el=AP.el, src=apSrc(it), st=it.au?it.au[0]/1000:0, end=it.au?(it.au[0]+it.au[1])/1000:null;
-  AP.cur=it; AP.paused=false;
-  const tick=()=>{if(AP.cur!==it||AP.paused)return;if(end!=null&&el.currentTime>=end){el.pause();AP.cur=null;apUI();return}AP.raf=requestAnimationFrame(tick)};
-  const go=()=>{try{el.currentTime=st}catch(e){}el.playbackRate=AP.rate;try{el.preservesPitch=true}catch(e){}el.play().then(()=>{apUI();tick()}).catch(()=>{AP.cur=null;apUI()})};
-  el.onended=()=>{if(AP.cur===it){AP.cur=null;apUI()}};
-  if(el._src!==src){el._src=src;el.src=src;el.preload='auto';el.addEventListener('loadedmetadata',go,{once:true});el.load()}else go();
-  apUI();
+  AP.cur=it; AP.paused=false; AP.state='load'; apUI();
+  let url; try{url=await apFetch(src)}catch(e){if(AP.cur===it){AP.state='err';apUI();AP.cur=it}return}
+  if(AP.cur!==it)return;
+  const tick=()=>{if(AP.cur!==it||AP.paused)return;if(end!=null&&el.currentTime>=end){el.pause();AP.cur=null;AP.state='';apUI();return}AP.raf=requestAnimationFrame(tick)};
+  const go=()=>{if(AP.cur!==it)return;try{el.currentTime=st}catch(e){}el.playbackRate=AP.rate;try{el.preservesPitch=true}catch(e){}
+    el.play().then(()=>{AP.state='';apUI();tick()}).catch(()=>{AP.state='err';apUI()})};
+  el.onended=()=>{if(AP.cur===it){AP.cur=null;AP.state='';apUI()}};
+  if(el._src!==url){el._src=url;el.src=url;el.preload='auto';el.addEventListener('loadedmetadata',go,{once:true});el.load()}else go();
 }
 function apToggle(it){
+  if(AP.cur===it&&(AP.state==='load'))return;
+  if(AP.cur===it&&AP.state==='err'){apPlay(it);return}
   if(AP.cur===it&&!AP.paused){AP.el.pause();AP.paused=true;cancelAnimationFrame(AP.raf);apUI();return}
   if(AP.cur===it&&AP.paused){AP.paused=false;AP.el.playbackRate=AP.rate;AP.el.play().catch(()=>{});
     const end=it.au?(it.au[0]+it.au[1])/1000:null;const tick=()=>{if(AP.cur!==it||AP.paused)return;if(end!=null&&AP.el.currentTime>=end){AP.el.pause();AP.cur=null;apUI();return}AP.raf=requestAnimationFrame(tick)};tick();apUI();return}
@@ -12346,6 +12355,7 @@ function playPrac(lv,tp){
     app.innerHTML=topBar(gameTitle(),1)+`<div class="hud"><span class="pill">Задание <b>${qi+1}</b> / ${N}</span></div>${itemHTML(it)}<div class="row-btns" style="margin-top:12px"><button class="btn red" id="fdone">Готово</button></div><div class="explain" id="ex" hidden></div>`;
     bindBack();let val='';bindItem(it,null,v=>{val=v||''},false);
     $('#fdone').onclick=()=>{const ex=$('#ex');ex.hidden=false;ex.className='explain';ex.innerHTML=freeDoneHTML(it)+`<div class="row-btns" style="margin-top:12px"><button class="btn red" id="nx">${qi<N-1?'Следующее задание →':'Закончить'}</button></div>`;$('#nx').onclick=()=>{qi++;nx();window.scrollTo(0,0)}}};nx();return}
+  apPrefetch(items);
   let qi=0,score=0,miss=[];
   const next=()=>{apStop();
     if(qi>=N)return finish({score:`${score} из ${N}`,title:score===N?'Отлично, всё верно!':`Правильно ${score} из ${N}`,sub:'Нажми «Ещё раз» — задания каждый раз перемешиваются',best:score,fmt:v=>v+' из '+N,review:miss});
@@ -12363,6 +12373,7 @@ function playPrac(lv,tp){
 function mockName(m){return (m.kind==='full'?'Полный пробник ':'Мини-пробник ')+m.n}
 function playMock(lv,id){
   const m=MOCK[lv].mocks.find(x=>x.id===id); const items=m.secs.flatMap(s=>s.items.map(it=>({...it,_picked:null,_bank:null})));
+  apPrefetch(items);
   const N=items.length, ans=new Array(N).fill(null); let qi=0, tEnd=0, confirmEnd=false, over=false;
   const cnt=s=>m.secs.filter(x=>x.name===s).reduce((a,x)=>a+x.items.length,0);
   app.innerHTML=topBar(gameTitle(),1)+`<div class="prompt" style="text-align:left">
