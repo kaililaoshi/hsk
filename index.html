@@ -97,6 +97,8 @@ u.tw{text-decoration-color:var(--red);text-decoration-thickness:3px;text-underli
 .pad2{display:flex;gap:16px;justify-content:center;margin-top:12px}.pad2 button{width:110px;height:62px;border:0;border-radius:16px;background:var(--card);box-shadow:var(--shadow);font-size:28px;font-weight:900;touch-action:manipulation}.pad2 button:active{background:var(--sage-soft)}
 .game.mk{min-height:0}
 .block>.games{margin-top:16px}
+.exl{display:grid;gap:8px;margin-bottom:10px}.exi{display:flex;gap:10px;align-items:flex-start;background:var(--card);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow);text-align:left}
+.exs{border:0;background:var(--sage-soft);border-radius:999px;padding:6px 9px;flex:none}.exz{font-size:20px;line-height:1.6}.uw{color:var(--red)}.ert{font-size:14px;color:var(--muted);cursor:pointer}.ert.hid{color:transparent;background:var(--card-2);border-radius:6px}
 .listbanner{display:flex;gap:14px;align-items:center;width:100%;text-align:left;border:2px dashed var(--sage);background:var(--sage-soft);border-radius:16px;padding:12px 16px;margin:0 0 12px;cursor:pointer;color:var(--ink);font-size:14px;line-height:1.4}.listbanner>span:first-child{font-size:30px}.listbanner:hover{border-style:solid}
 .wl{display:grid;gap:4px}.wr{display:grid;grid-template-columns:34px minmax(90px,150px) minmax(90px,170px) 1fr;gap:10px;align-items:center;background:var(--card);border-radius:10px;padding:8px 10px;cursor:pointer;box-shadow:var(--shadow)}
 .wr:hover{outline:2px solid var(--sage-soft)}.wn{color:var(--muted);font-size:12px}.wh{font-size:24px;font-weight:800}.wp{color:var(--red);font-weight:700}.wt{font-size:14px;line-height:1.35}
@@ -11764,6 +11766,7 @@ const GGAMES = [
   {id:'gorder', t:'Собери перевод', ic:'排', d:'Русская фраза → собери китайское предложение из плиток'},
   {id:'gzr', t:'Что значит фраза?', ic:'译', d:'Китайское предложение → выбери верный перевод'},
   {id:'gmatch', t:'Вопрос — ответ', ic:'答', d:'Соедини каждый вопрос с подходящим ответом'},
+  {id:'usage', t:'Слово в деле', ic:'例', d:'2–4 примера употребления каждого слова с переводом, потом проверка: вставь слово в новое предложение'},
   {id:'build', t:'Составь предложение', ic:'句', d:'Даны слова вразнобой — расставь их в правильном порядке. Перевод покажем после ответа'},
   {id:'snake', t:'Змейка', ic:'蛇', d:'Съешь слова по порядку, чтобы собрать предложение. С каждым уровнем фразы длиннее'},
 ];
@@ -11815,7 +11818,7 @@ function save(){store.set('lessons',state.lessons);store.set('listen',state.list
 function render(){
   clearTimers();try{apStop()}catch(e){}
   if(state.screen==='home') return renderHome();
-  const g = {cards:playCards,quiz:()=>playChoice('quiz'),rev:()=>playChoice('rev'),pinyin:()=>playChoice('pinyin'),listen:()=>playChoice('listen'),memory:playMemory,whack:playWhack,wolf:playWolf,gfill:()=>playGChoice('fill'),gzr:()=>playGChoice('zr'),gfix:playGFix,gorder:playGOrder,gmatch:playGMatch,snake:playSnake,cols:playCols,build:playBuild,list:playList}[state.game]||(state.game.startsWith('pr')?()=>{const [a,t]=state.game.slice(2).split(':');playPrac(+a,t)}:state.game.startsWith('mk')?()=>{const [a,id]=state.game.slice(2).split(':');playMock(+a,id)}:null);
+  const g = {cards:playCards,quiz:()=>playChoice('quiz'),rev:()=>playChoice('rev'),pinyin:()=>playChoice('pinyin'),listen:()=>playChoice('listen'),memory:playMemory,whack:playWhack,wolf:playWolf,gfill:()=>playGChoice('fill'),gzr:()=>playGChoice('zr'),gfix:playGFix,gorder:playGOrder,gmatch:playGMatch,snake:playSnake,cols:playCols,build:playBuild,list:playList,usage:playUsage}[state.game]||(state.game.startsWith('pr')?()=>{const [a,t]=state.game.slice(2).split(':');playPrac(+a,t)}:state.game.startsWith('mk')?()=>{const [a,id]=state.game.slice(2).split(':');playMock(+a,id)}:null);
   g();
 }
 function topBar(label,back){
@@ -11895,7 +11898,7 @@ function renderHome(){
   app.querySelectorAll('.game,.tbtn.go,.go[data-g]').forEach(b=>b.onclick=()=>{ctx();state.game=b.dataset.g;state.screen='play';render();window.scrollTo(0,0)});
   app.querySelectorAll('.jump a').forEach(a=>a.onclick=e=>{e.preventDefault();const t=document.querySelector(a.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth'})});
 }
-function gameTitle(){const g0=state.game||'';if(g0==='list')return 'Списки слов';
+function gameTitle(){const g0=state.game||'';if(g0==='list')return 'Списки слов';if(g0==='usage')return 'Слово в деле';
   if(g0.startsWith('pr')){const [a,t]=g0.slice(2).split(':');return lvName(+a)+' · '+PT[t]}
   if(g0.startsWith('mk')){const [a,id]=g0.slice(2).split(':');const m=MOCK[+a].mocks.find(x=>x.id===id);return lvName(+a)+' · '+mockName(m)}
   const g=GGAMES.find(g=>g.id===state.game);if(g){const L=gsel();return g.t+' · '+(L.length===1?gname(L[0]):'тем: '+L.length)}return GAMES.find(g=>g.id===state.game).t}
@@ -12471,6 +12474,54 @@ function playList(){
     $('#toGame').onclick=()=>{state.lessons=[st];state.open['v'+lv]=true;save();state.screen='home';render();later(()=>{const e=document.getElementById('blk1');if(e)e.scrollIntoView()},50)};
   };
   paint();
+}
+
+/* ---------- usage examples game ---------- */
+const EXC={};
+function loadEx(lv){if(!EXC[lv])EXC[lv]=(typeof EXD!=='undefined'&&EXD[lv])?Promise.resolve(EXD[lv]):fetch('ex/'+lv+'.json').then(r=>r.json()).catch(()=>({}));return EXC[lv]}
+function sayText(t){try{if(curSrc){curSrc.stop();curSrc=null}}catch(e){}tts(t)}
+async function playUsage(){
+  app.innerHTML=topBar(gameTitle(),1)+'<div class="prompt"><div class="hint">Загружаю примеры…</div></div>';bindBack();
+  const P=pool(); const lvs=[...new Set(P.map(w=>Math.floor(w.l/100)))]; const D={};
+  for(const lv of lvs){D[lv]=await loadEx(lv)}
+  const exOf=w=>(D[Math.floor(w.l/100)]||{})[w.h]||[];
+  const withEx=P.filter(w=>exOf(w).length);
+  if(withEx.length<4){app.innerHTML=topBar(gameTitle(),1)+`<div class="prompt"><div class="hint" style="max-width:46ch;line-height:1.5">Для выбранных слов почти нет примеров (нашлось ${withEx.length}). Выбери другие наборы — на HSK 1–4 примеров больше всего.</div></div>`;bindBack();return}
+  const words=sample(withEx,Math.min(8,withEx.length)); const N=words.length; let qi=0,score=0,miss=[],hideTr=false,hidePy=true;
+  const mark=(s,h)=>esc(s).split(esc(h)).join(`<b class="uw">${esc(h)}</b>`);
+  const learn=()=>{
+    if(qi>=N)return finish({score:`${score} из ${N}`,title:score===N?'Все слова на месте!':`Правильно ${score} из ${N}`,sub:'Примеры — из базы Tatoeba с русскими переводами',best:score,fmt:v=>v+' из '+N,review:miss});
+    const w=words[qi], ex=exOf(w), show=ex.length>=3?ex.slice(0,Math.min(4,ex.length-1)):ex;
+    app.innerHTML=topBar(gameTitle(),1)+`
+    <div class="hud"><span class="pill">Слово <b>${qi+1}</b> / ${N}</span><span class="pill">Верно: <b>${score}</b></span></div>
+    <div class="prompt"><div class="big" style="cursor:pointer" id="ww"><span class="hz">${esc(w.h)}</span><small>${esc(w.p)} · ${esc(w.r)}</small></div></div>
+    <div class="row-btns" style="justify-content:flex-start;gap:8px;margin:0 0 8px"><button class="tbtn" id="tp" aria-pressed="${!hidePy}">${hidePy?'Показать':'Скрыть'} пиньинь</button><button class="tbtn" id="tt" aria-pressed="${hideTr}">${hideTr?'Показать':'Скрыть'} перевод</button></div>
+    <div class="exl">${show.map((e,i)=>`<div class="exi"><button class="exs" data-i="${i}" aria-label="Послушать">🔊</button><div><div class="hz exz">${mark(e[0],w.h)}</div>${hidePy?'':`<div class="py">${esc(e[1])}</div>`}<div class="ert ${hideTr?'hid':''}">${esc(e[2])}</div></div></div>`).join('')}</div>
+    <p class="hint" style="text-align:left">Прочитай примеры и подумай, с какими словами сочетается «${esc(w.h)}». Потом — проверка.</p>
+    <div class="row-btns"><button class="btn red" id="go">Проверить себя →</button></div>`;
+    bindBack(); say(w); $('#ww').onclick=()=>say(w);
+    app.querySelectorAll('.exs').forEach(b=>b.onclick=()=>sayText(show[+b.dataset.i][0]));
+    app.querySelectorAll('.ert').forEach(e=>e.onclick=()=>e.classList.remove('hid'));
+    $('#tp').onclick=()=>{hidePy=!hidePy;learn()}; $('#tt').onclick=()=>{hideTr=!hideTr;learn()};
+    $('#go').onclick=()=>quiz(w,ex.length>=3?ex[ex.length-1]:sample(ex,1)[0]);
+  };
+  const quiz=(w,e)=>{
+    const others=shuffle(withEx.concat(P).filter(x=>x.h!==w.h&&[...x.h].length===[...w.h].length&&!e[0].includes(x.h)));
+    const opts=[w.h];for(const x of others){if(!opts.includes(x.h))opts.push(x.h);if(opts.length===4)break}
+    const o=shuffle(opts);
+    app.innerHTML=topBar(gameTitle(),1)+`
+    <div class="hud"><span class="pill">Слово <b>${qi+1}</b> / ${N}</span><span class="pill">Верно: <b>${score}</b></span></div>
+    <div class="prompt"><div class="hint">Какое слово пропущено?</div><div class="sent hz">${esc(e[0]).split(esc(w.h)).join('<span class="blank">?</span>')}</div></div>
+    <div class="opts">${o.map(x=>`<button class="opt hzopt" data-x="${esc(x)}"><span class="hz">${esc(x)}</span></button>`).join('')}</div>
+    <div class="explain" id="ex" hidden></div>`;
+    bindBack();
+    app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const ok=b.dataset.x===w.h;if(ok)score++;else miss.push(w);
+      app.querySelectorAll('.opt').forEach(x=>{x.disabled=true;if(x.dataset.x===w.h)x.classList.add('good')});if(!ok)b.classList.add('wrong');
+      const ex=$('#ex');ex.hidden=false;ex.className='explain '+(ok?'ok':'no');
+      ex.innerHTML=`<b>${ok?'Верно!':'Неверно.'}</b> <span class="hz">${mark(e[0],w.h)}</span><div class="py">${esc(e[1])}</div><div>${esc(e[2])}</div>${nextBtn()}`;
+      sayText(e[0]); $('#nx').onclick=()=>{qi++;learn();window.scrollTo(0,0)}});
+  };
+  learn();
 }
 
 function playGMatch(){
